@@ -1,0 +1,70 @@
+name: 'terraform-deploy-training-Atishay'
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        type: choice
+        description: 'Region'
+        required: true
+        default: 'us-east-1'
+        options:
+          - us-east-1
+          - eu-west-1
+          - ap-southeast-1
+      environment:
+        type: choice
+        description: 'Environment'
+        required: true
+        default: 'dev-apps'
+        options:
+          - dev-apps
+          - UAT
+          - Prod
+
+  push:
+    branches: [ main ]
+
+env:
+  TF_VAR_region: "${{ github.event.inputs.region }}"
+  TF_VAR_environment: "${{ github.event.inputs.environment }}"
+  TF_VAR_instance_name: "som-fss-eddy-test"
+  TF_VAR_ami_id: "ami-08970251d20e940b0"
+
+jobs:
+  terraform:
+    name: 'Terraform Plan'
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 20
+    environment: "${{ github.event.inputs.environment }}"
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      # Checkout the repository to the GitHub Actions runner
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.TF_VAR_region }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Verify Terraform version
+        run: terraform --version
+
+      - name: Terraform Init
+        run: terraform init 
+
+      - name: Terraform Plan
+        run: terraform plan -input=false
+
+      # - name: Terraform Apply
+      #   run: terraform apply -auto-approve -input=true
